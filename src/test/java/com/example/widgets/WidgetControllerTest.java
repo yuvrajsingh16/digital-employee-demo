@@ -35,4 +35,16 @@ class WidgetControllerTest {
     void getUnknownIs404() throws Exception {
         mvc.perform(get("/widgets/nope")).andExpect(status().isNotFound());
     }
+
+    @Test
+    void createWithBlankNameIs400() throws Exception {
+        mvc.perform(post("/widgets").contentType("application/json").content("{\"name\":\"\",\"quantity\":3}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createWithNegativeQuantityIs400() throws Exception {
+        mvc.perform(post("/widgets").contentType("application/json").content("{\"name\":\"bolt\",\"quantity\":-1}"))
+                .andExpect(status().isBadRequest());
+    }
 }
