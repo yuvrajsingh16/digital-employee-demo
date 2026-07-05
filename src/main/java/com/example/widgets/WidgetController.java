@@ -1,5 +1,8 @@
 package com.example.widgets;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,10 +35,13 @@ public class WidgetController {
     }
 
     @PostMapping
-    public Widget create(@RequestBody CreateWidgetRequest request) {
+    public Widget create(@Valid @RequestBody CreateWidgetRequest request) {
         return service.create(request.name(), request.quantity());
     }
 
-    public record CreateWidgetRequest(String name, int quantity) {
+    public record CreateWidgetRequest(
+            @NotBlank(message = "name must be non-blank") String name,
+            @Min(value = 0, message = "quantity must be >= 0") int quantity
+    ) {
     }
 }
