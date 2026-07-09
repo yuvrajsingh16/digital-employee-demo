@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class VersionController {
 
-    private static final String DEFAULT_VERSION = "unknown";
+    private static final String FALLBACK_VERSION = "unknown";
 
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
 
@@ -20,7 +20,7 @@ public class VersionController {
     @GetMapping("/version")
     public VersionResponse version() {
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
-        String version = buildProperties != null ? buildProperties.getVersion() : DEFAULT_VERSION;
+        String version = buildProperties != null ? buildProperties.getVersion() : FALLBACK_VERSION;
         return new VersionResponse(version);
     }
 

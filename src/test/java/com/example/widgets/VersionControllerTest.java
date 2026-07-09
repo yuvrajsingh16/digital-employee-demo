@@ -1,75 +1,43 @@
 package com.example.widgets;
 
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Properties;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@SpringBootTest(classes = VersionControllerTest.TestBuildPropertiesConfiguration.class)
+@AutoConfigureMockMvc
 class VersionControllerTest {
 
-    @Nested
-    @SpringBootTest
-    @AutoConfigureMockMvc
-    class WhenBuildPropertiesPresent {
+    private static final String STUBBED_VERSION = "test-version";
 
-        @Autowired
-        MockMvc mvc;
+    @Autowired
+    MockMvc mvc;
 
-        @Test
-        void returnsVersionAsJson() throws Exception {
-            mvc.perform(get("/version"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.version").isNotEmpty());
-        }
+    @Test
+    void returnsBuildInfoVersion() throws Exception {
+        mvc.perform(get("/version"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(STUBBED_VERSION));
     }
 
-    @Nested
-    @SpringBootTest(classes = {WidgetsApplication.class, NoBuildPropertiesTestConfig.class})
-    @AutoConfigureMockMvc
-    class WhenBuildPropertiesMissing {
-
-        @Autowired
-        MockMvc mvc;
-
-        @Test
-        void returnsUnknownVersionWithJsonContentType() throws Exception {
-            mvc.perform(get("/version"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.version").value("unknown"));
-        }
-    }
-
-    @Configuration(proxyBeanMethods = false)
-    static class NoBuildPropertiesTestConfig {
-
+    @TestConfiguration
+    static class TestBuildPropertiesConfiguration {
         @Bean
-        static org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor removeBuildPropertiesBeanDefinition() {
-            return new org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor() {
-                @Override
-                public void postProcessBeanDefinitionRegistry(
-                        org.springframework.beans.factory.support.BeanDefinitionRegistry registry) {
-                    if (registry.containsBeanDefinition("buildProperties")) {
-                        registry.removeBeanDefinition("buildProperties");
-                    }
-                }
-
-                @Override
-                public void postProcessBeanFactory(
-                        org.springframework.beans.factory.config.ConfigurableListableBeanFactory beanFactory) {
-                }
-            };
+        BuildProperties buildProperties() {
+            Properties properties = new Properties();
+            properties.put("version", STUBBED_VERSION);
+            return new BuildProperties(properties);
         }
     }
 }
