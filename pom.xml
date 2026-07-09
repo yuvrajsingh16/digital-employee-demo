@@ -20,6 +20,13 @@
 
     <properties>
         <java.version>17</java.version>
+
+        <!--
+          Jansi extracts a native library to java.io.tmpdir. In some containerized environments
+          (e.g., /tmp mounted with noexec), this produces a noisy non-fatal warning.
+          Point tests at a project-local temp directory to avoid confusing CI logs.
+        -->
+        <surefire.argLine>-Djansi.tmpdir=${project.build.directory}/tmp</surefire.argLine>
     </properties>
 
     <dependencies>
@@ -43,6 +50,14 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>${surefire.argLine}</argLine>
+                </configuration>
             </plugin>
         </plugins>
     </build>
