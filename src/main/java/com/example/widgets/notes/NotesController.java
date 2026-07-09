@@ -1,5 +1,7 @@
 package com.example.widgets.notes;
 
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,8 +27,8 @@ public class NotesController {
     }
 
     @PostMapping
-    public ResponseEntity<NoteResponse> create(@RequestBody NoteRequest request) {
-        return ResponseEntity.ok(NoteResponse.from(service.create(request.title(), request.content())));
+    public ResponseEntity<NoteResponse> create(@Valid @RequestBody NoteRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(NoteResponse.from(service.create(request.title(), request.content())));
     }
 
     @GetMapping
@@ -40,17 +42,20 @@ public class NotesController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<NoteResponse> update(@PathVariable UUID id, @RequestBody NoteRequest request) {
+    public ResponseEntity<NoteResponse> update(@PathVariable UUID id, @Valid @RequestBody NoteRequest request) {
         return ResponseEntity.ok(NoteResponse.from(service.update(id, request.title(), request.content())));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        service.delete(id);
+        DeleteResult deleteResult = service.delete(id);
+        if (!deleteResult.deleted()) {
+            throw new NoteNotFoundException(id);
+        }
         return ResponseEntity.noContent().build();
     }
 
-    public record NoteRequest(String title, String content) {
+    public record NoteRequest(@jakarta.validation.constraints.NotBlank String title, String content) {
     }
 
     public record NoteResponse(UUID id, String title, String content, Instant createdAt, Instant updatedAt) {

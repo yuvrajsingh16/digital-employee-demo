@@ -9,8 +9,8 @@ public record Note(UUID id, String title, String content, Instant createdAt, Ins
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
-        if (title == null || title.isBlank()) {
-            throw new IllegalArgumentException("title must not be blank");
+        if (title == null) {
+            throw new IllegalArgumentException("title must not be null");
         }
         if (content == null) {
             throw new IllegalArgumentException("content must not be null");
