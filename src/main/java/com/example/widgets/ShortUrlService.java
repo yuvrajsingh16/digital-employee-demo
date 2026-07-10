@@ -1,70 +1,81 @@
 package com.example.widgets;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class ShortUrlService {
 
-    private static final int CODE_LENGTH = 7;
     private static final int MAX_URL_LENGTH = 2048;
-    private static final String BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    private static final int MAX_SAVE_ATTEMPTS = 10;
 
     private final ShortUrlRepository repository;
+    private final ShortUrlCodeGenerator codeGenerator;
     private final String publicBaseUrl;
 
-    public ShortUrlService(ShortUrlRepository repository, @Value("${app.public-base-url:}") String publicBaseUrl) {
+    public ShortUrlService(ShortUrlRepository repository,
+            ShortUrlCodeGenerator codeGenerator,
+            @Value("${app.public-base-url:}") String publicBaseUrl) {
         this.repository = repository;
+        this.codeGenerator = codeGenerator;
         this.publicBaseUrl = publicBaseUrl;
     }
 
-    public ShortUrlResponse shorten(String originalUrl, String requestBaseUrl) {
+    public ShortUrlResponse shorten(String originalUrl) {
         validateOriginalUrl(originalUrl);
-        ShortUrlMapping existing = repository.findByOriginalUrl(originalUrl).orElse(null);
-        if (existing != null) {
-            return toResponse(existing, requestBaseUrl);
+        Optional<ShortUrlMappingEntity> existingMapping = repository.findByOriginalUrl(originalUrl);
+        if (existingMapping.isPresent()) {
+            return toResponse(existingMapping.get());
         }
-        while (true) {
-            ShortUrlMapping mapping = new ShortUrlMapping(generateCode(), originalUrl, Instant.now());
-            if (repository.save(mapping)) {
-                return toResponse(mapping, requestBaseUrl);
-            }
-        }
+        return createShortUrl(originalUrl);
     }
 
     public Optional<String> resolveOriginalUrl(String code) {
-        return repository.findByCode(code).map(ShortUrlMapping::originalUrl);
+        return repository.findByCode(code).map(ShortUrlMappingEntity::getOriginalUrl);
+    }
+
+    private ShortUrlResponse createShortUrl(String originalUrl) {
+        for (int attempt = 0; attempt < MAX_SAVE_ATTEMPTS; attempt++) {
+            try {
+                return toResponse(repository.save(new ShortUrlMappingEntity(codeGenerator.generateCode(), originalUrl, Instant.now())));
+            } catch (DataIntegrityViolationException exception) {
+                Optional<ShortUrlMappingEntity> existingMapping = repository.findByOriginalUrl(originalUrl);
+                if (existingMapping.isPresent()) {
+                    return toResponse(existingMapping.get());
+                }
+            }
+        }
+        throw new ShortUrlCreationException("Unable to create a unique short URL after " + MAX_SAVE_ATTEMPTS + " attempts");
     }
 
     private void validateOriginalUrl(String originalUrl) {
-        if (originalUrl == null || originalUrl.isBlank() || originalUrl.length() > MAX_URL_LENGTH) {
-            throw new InvalidShortUrlException("URL must be a non-empty absolute URL no longer than 2048 characters");
+        if (originalUrl == null || originalUrl.isBlank()) {
+            throw new InvalidShortUrlException("invalid_url: URL must not be blank");
         }
-        URI uri = URI.create(originalUrl);
-        if (!uri.isAbsolute() || uri.getScheme() == null || uri.getHost() == null) {
-            throw new InvalidShortUrlException("URL must be a valid absolute URL");
+        if (originalUrl.length() > MAX_URL_LENGTH) {
+            throw new InvalidShortUrlException("invalid_url: URL must not exceed 2048 characters");
+        }
+        try {
+            URI uri = URI.create(originalUrl);
+            if (!uri.isAbsolute() || uri.getScheme() == null || uri.getHost() == null) {
+                throw new InvalidShortUrlException("invalid_url: URL must be an absolute URL");
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidShortUrlException("invalid_url: URL must be an absolute URL", exception);
         }
     }
 
-    private ShortUrlResponse toResponse(ShortUrlMapping mapping, String requestBaseUrl) {
-        return new ShortUrlResponse(mapping.code(), buildShortUrl(mapping.code(), requestBaseUrl), mapping.originalUrl());
+    private ShortUrlResponse toResponse(ShortUrlMappingEntity mapping) {
+        return new ShortUrlResponse(mapping.getCode(), buildShortUrl(mapping.getCode()), mapping.getOriginalUrl());
     }
 
-    private String buildShortUrl(String code, String requestBaseUrl) {
-        String baseUrl = publicBaseUrl.isBlank() ? requestBaseUrl : publicBaseUrl;
+    private String buildShortUrl(String code) {
+        String baseUrl = publicBaseUrl.isBlank() ? "" : publicBaseUrl;
         return baseUrl.endsWith("/") ? baseUrl + code : baseUrl + "/" + code;
-    }
-
-    private String generateCode() {
-        StringBuilder builder = new StringBuilder(CODE_LENGTH);
-        for (int index = 0; index < CODE_LENGTH; index++) {
-            builder.append(BASE62.charAt(ThreadLocalRandom.current().nextInt(BASE62.length())));
-        }
-        return builder.toString();
     }
 }

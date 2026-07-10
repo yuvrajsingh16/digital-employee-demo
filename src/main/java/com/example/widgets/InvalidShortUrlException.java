@@ -9,4 +9,8 @@ public class InvalidShortUrlException extends RuntimeException {
     public InvalidShortUrlException(String message) {
         super(message);
     }
+
+    public InvalidShortUrlException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

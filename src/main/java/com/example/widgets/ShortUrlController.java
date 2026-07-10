@@ -29,8 +29,7 @@ public class ShortUrlController {
 
     @PostMapping("/api/shorten")
     public ResponseEntity<ShortUrlResponse> shorten(@Valid @RequestBody ShortenRequest request, HttpServletRequest servletRequest) {
-        String requestBaseUrl = servletRequest.getScheme() + "://" + servletRequest.getServerName() + ":" + servletRequest.getServerPort();
-        ShortUrlResponse response = service.shorten(request.originalUrl(), requestBaseUrl);
+        ShortUrlResponse response = service.shorten(request.originalUrl());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -42,6 +41,7 @@ public class ShortUrlController {
         return service.resolveOriginalUrl(code)
                 .map(url -> ResponseEntity.status(HttpStatus.FOUND).location(URI.create(url)).build())
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "short_url_not_found")));
+
     }
 
     @ExceptionHandler(InvalidShortUrlException.class)

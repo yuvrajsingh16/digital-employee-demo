@@ -6,10 +6,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,7 +53,16 @@ class ShortUrlControllerTest {
     void rejectsInvalidUrlWith422() throws Exception {
         mvc.perform(post("/api/shorten").contentType("application/json").content("{\"originalUrl\":\"not-a-url\"}"))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("invalid_url"));
+                .andExpect(jsonPath("$.error").value("invalid_url"))
+                .andExpect(jsonPath("$.message").value("invalid_url: URL must be an absolute URL"));
+    }
+
+    @Test
+    void rejectsMalformedUrlWith422() throws Exception {
+        mvc.perform(post("/api/shorten").contentType("application/json").content("{\"originalUrl\":\"http://[\"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value("invalid_url"))
+                .andExpect(jsonPath("$.message").value("invalid_url: URL must be an absolute URL"));
     }
 
     @Test
@@ -62,7 +72,9 @@ class ShortUrlControllerTest {
             builder.append('a');
         }
         mvc.perform(post("/api/shorten").contentType("application/json").content("{\"originalUrl\":\"" + builder + "\"}"))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value("invalid_url"))
+                .andExpect(jsonPath("$.message").value("invalid_url: URL must not exceed 2048 characters"));
     }
 
     @Test
