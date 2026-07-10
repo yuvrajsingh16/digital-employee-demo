@@ -1,34 +1,12 @@
 package com.example.widgets;
 
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
-@Repository
-public class ShortUrlRepository {
+public interface ShortUrlRepository extends JpaRepository<ShortUrlMappingEntity, Long> {
 
-    private final ConcurrentHashMap<String, ShortUrlMapping> byCode = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, ShortUrlMapping> byOriginalUrl = new ConcurrentHashMap<>();
+    Optional<ShortUrlMappingEntity> findByCode(String code);
 
-    public Optional<ShortUrlMapping> findByCode(String code) {
-        return Optional.ofNullable(byCode.get(code));
-    }
-
-    public Optional<ShortUrlMapping> findByOriginalUrl(String originalUrl) {
-        return Optional.ofNullable(byOriginalUrl.get(originalUrl));
-    }
-
-    public boolean save(ShortUrlMapping mapping) {
-        ShortUrlMapping existingByCode = byCode.putIfAbsent(mapping.code(), mapping);
-        if (existingByCode != null) {
-            return false;
-        }
-        ShortUrlMapping existingByOriginalUrl = byOriginalUrl.putIfAbsent(mapping.originalUrl(), mapping);
-        if (existingByOriginalUrl != null) {
-            byCode.remove(mapping.code());
-            return false;
-        }
-        return true;
-    }
+    Optional<ShortUrlMappingEntity> findByOriginalUrl(String originalUrl);
 }
