@@ -22,8 +22,7 @@ public class ShortUrlRepository {
     }
 
     public ShortUrlMapping save(ShortUrlMapping mapping) {
-        ShortUrlMappingEntity saved = repository.save(toEntity(mapping));
-        return toMapping(saved);
+        return toMapping(repository.save(toEntity(mapping)));
     }
 
     private ShortUrlMappingEntity toEntity(ShortUrlMapping mapping) {
